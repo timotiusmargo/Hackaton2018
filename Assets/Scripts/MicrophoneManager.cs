@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using NUnit.Framework.Interfaces;
+using NUnit.Framework.Internal;
 using UnityEngine;
 using UnityEngine.Windows.Speech;
 
@@ -52,6 +54,7 @@ public class MicrophoneManager : MonoBehaviour {
 
             // Update UI with mic status 
             Results.instance.SetMicrophoneStatus("Capturing...");
+            Results.instance.SetItalics();
         }
     }
 

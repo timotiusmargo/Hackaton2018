@@ -49,6 +49,7 @@ public class Results : MonoBehaviour {
     {
         dictationResult = result;
         dictationText.text = dictationResult;
+        dictationText.fontStyle = FontStyle.Normal;
     }
 
     /// <summary>
@@ -58,6 +59,12 @@ public class Results : MonoBehaviour {
     {
         translationResult = result;
         translationResultText.text = translationResult;
+    }
+
+    public void SetItalics()
+    {
+        SetDictationResult("Transcribing...");
+        dictationText.fontStyle = FontStyle.Italic;
     }
 
     /// <summary>
