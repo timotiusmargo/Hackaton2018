@@ -75,6 +75,8 @@ public class MicrophoneManager : MonoBehaviour {
         // Update UI with dictation captured
         Results.instance.SetDictationResult(text);
 
+        // Update UI with dictation captured
+        Results.instance.SetSubtitleContent(text);
         // Start the coroutine that process the dictation through Azure 
         //StartCoroutine(Translator.instance.TranslateWithUnityNetworking(text));
     }

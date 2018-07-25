@@ -19,6 +19,9 @@ public class Results : MonoBehaviour {
     [HideInInspector]
     public string micStatus;
 
+    [HideInInspector]
+    public string subtitleContent;
+
     public Text microphoneStatusText;
 
     public Text azureResponseText;
@@ -26,6 +29,8 @@ public class Results : MonoBehaviour {
     public Text dictationText;
 
     public Text translationResultText;
+
+    public Text subTitleContentText;
 
     private void Awake()
     {
@@ -67,6 +72,15 @@ public class Results : MonoBehaviour {
     {
         micStatus = result;
         microphoneStatusText.text = micStatus;
+    }
+
+    /// <summary>
+    /// Stores the result from dictation in the static instance of Result class. 
+    /// </summary>
+    public void SetSubtitleContent(string result)
+    {
+        subtitleContent = result;
+        subTitleContentText.text = subtitleContent;
     }
 
     // Use this for initialization
