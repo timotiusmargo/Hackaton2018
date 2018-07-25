@@ -35,6 +35,7 @@ public class MicrophoneManager : MonoBehaviour {
         else
         {
             Results.instance.SetMicrophoneStatus("No Microphone detected");
+            Results.instance.SetSubtitleContent("No microphone detected :(");
         }
     }
 
@@ -48,10 +49,28 @@ public class MicrophoneManager : MonoBehaviour {
             // Start dictation 
             dictationRecognizer = new DictationRecognizer();
             dictationRecognizer.DictationResult += DictationRecognizer_DictationResult;
+
+            dictationRecognizer.DictationHypothesis += (text) =>
+            {
+                Debug.LogFormat("Dictation hypothesis: {0}", text);
+            };
+
+            dictationRecognizer.DictationComplete += (completionCause) =>
+            {
+                if (completionCause != DictationCompletionCause.Complete)
+                    Debug.LogErrorFormat("Dictation completed unsuccessfully: {0}.", completionCause);
+            };
+
+            dictationRecognizer.DictationError += (error, hresult) =>
+            {
+                Debug.LogErrorFormat("Dictation error: {0}; HResult = {1}.", error, hresult);
+            };
+
             dictationRecognizer.Start();
 
             // Update UI with mic status 
             Results.instance.SetMicrophoneStatus("Capturing...");
+            Results.instance.SetSubtitleContent("Now say something ;)");
         }
     }
 
