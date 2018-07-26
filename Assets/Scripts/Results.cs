@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class Results : MonoBehaviour {
@@ -8,24 +6,9 @@ public class Results : MonoBehaviour {
     public static Results instance;
 
     [HideInInspector]
-    public string azureResponseCode;
+    public string subtitleContent;
 
-    [HideInInspector]
-    public string translationResult;
-
-    [HideInInspector]
-    public string dictationResult;
-
-    [HideInInspector]
-    public string micStatus;
-
-    public Text microphoneStatusText;
-
-    public Text azureResponseText;
-
-    public Text dictationText;
-
-    public Text translationResultText;
+    public Text subTitleContentText;
 
     private void Awake()
     {
@@ -34,39 +17,21 @@ public class Results : MonoBehaviour {
     }
 
     /// <summary>
-    /// Stores the Azure response value in the static instance of Result class.
-    /// </summary>
-    public void SetAzureResponse(string result)
-    {
-        azureResponseCode = result;
-        azureResponseText.text = azureResponseCode;
-    }
-
-    /// <summary>
-    /// Stores the translated result from dictation in the static instance of Result class. 
-    /// </summary>
-    public void SetDictationResult(string result)
-    {
-        dictationResult = result;
-        dictationText.text = dictationResult;
-    }
-
-    /// <summary>
     /// Stores the translated result from Azure Service in the static instance of Result class. 
     /// </summary>
     public void SetTranslatedResult(string result)
     {
-        translationResult = result;
-        translationResultText.text = translationResult;
+        //translationResult = result;
+        //translationResultText.text = translationResult;
     }
 
     /// <summary>
-    /// Stores the status of the Microphone in the static instance of Result class. 
+    /// Stores the result from dictation in the static instance of Result class. 
     /// </summary>
-    public void SetMicrophoneStatus(string result)
+    public void SetSubtitleContent(string result)
     {
-        micStatus = result;
-        microphoneStatusText.text = micStatus;
+        subtitleContent = result;
+        subTitleContentText.text = subtitleContent;
     }
 
     // Use this for initialization
