@@ -93,9 +93,36 @@ public class MicrophoneManager : MonoBehaviour {
     {
         // Update UI with dictation captured
         Results.instance.SetDictationResult(text);
+        Results.instance.SetAlertMessage("");
 
         // Update UI with dictation captured
         Results.instance.SetSubtitleContent(text);
+        if (confidence == ConfidenceLevel.High)
+        {
+            Results.instance.SetTextConfidence("High");
+            Results.instance.ChangeCubeColor(Color.green);
+        }
+        else if (confidence == ConfidenceLevel.Medium)
+        {
+            Results.instance.SetTextConfidence("Medium");
+            Results.instance.ChangeCubeColor(Color.yellow);
+        }
+        else if (confidence == ConfidenceLevel.Low)
+        {
+            Results.instance.SetTextConfidence("Low");
+            Results.instance.ChangeCubeColor(Color.red);
+        }
+        else if (confidence == ConfidenceLevel.Rejected)
+        {
+            Results.instance.SetTextConfidence("Could not hear");
+            Results.instance.ChangeCubeColor(Color.gray);
+        }
+
+        if(text == "jesse")
+        {
+            Results.instance.SetAlertMessage("Somebody just called your name!");
+        }
+
         // Start the coroutine that process the dictation through Azure 
         //StartCoroutine(Translator.instance.TranslateWithUnityNetworking(text));
     }

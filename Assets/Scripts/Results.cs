@@ -22,6 +22,12 @@ public class Results : MonoBehaviour {
     [HideInInspector]
     public string subtitleContent;
 
+    [HideInInspector]
+    public string textConfidenceLevel;
+
+    [HideInInspector]
+    public string alertMessage;
+
     public Text microphoneStatusText;
 
     public Text azureResponseText;
@@ -31,6 +37,12 @@ public class Results : MonoBehaviour {
     public Text translationResultText;
 
     public Text subTitleContentText;
+
+    public Text textConfidenceLevelText;
+
+    public Text alertMessageText;
+
+    public GameObject confidenceCube;
 
     private void Awake()
     {
@@ -83,13 +95,25 @@ public class Results : MonoBehaviour {
         subTitleContentText.text = subtitleContent;
     }
 
-    // Use this for initialization
-    void Start () {
-		
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
+    /// <summary>
+    /// Stores the confidence level from dictation in the static instance of Result class. 
+    /// </summary>
+    public void SetTextConfidence(string result)
+    {
+        textConfidenceLevel = result;
+        textConfidenceLevelText.text = textConfidenceLevel;
+    }
+
+    public void SetAlertMessage(string result)
+    {
+        alertMessage = result;
+        alertMessageText.text = alertMessage;
+    }
+
+    public void ChangeCubeColor(Color color)
+    {
+        MeshRenderer gameObjectRenderer = confidenceCube.GetComponent<MeshRenderer>();
+        gameObjectRenderer.material.color = color;     
+    }
+
 }
