@@ -22,6 +22,9 @@ public class MicrophoneManager : MonoBehaviour {
     private float speechStatusUpdateTimer;
     private float speechTextExpiryTimer;
 
+    // Private lock to prevent race condition
+    private Object stateLock = new Object();
+
     // limit the update frequency to be every 0.3 second
     private const float speechStatusUpdateFrequency = 0.3f;
 
@@ -57,53 +60,56 @@ public class MicrophoneManager : MonoBehaviour {
 
     void Update()
     {
-        speechStatusUpdateTimer -= Time.deltaTime;
-        speechTextExpiryTimer -= Time.deltaTime;
-
-        // Only update this thread every updateFrequency duration
-        if (speechStatusUpdateTimer <= 0.0f)
+        lock (stateLock)
         {
-            if (dictationRecognizer != null)
+            speechStatusUpdateTimer -= Time.deltaTime;
+            speechTextExpiryTimer -= Time.deltaTime;
+
+            // Only update this thread every updateFrequency duration
+            if (speechStatusUpdateTimer <= 0.0f)
             {
-                SpeechSystemStatus currentStatus = dictationRecognizer.Status;
-
-                if (currentStatus != dictationRecognizerStatus)
+                if (dictationRecognizer != null)
                 {
-                    if (currentStatus == SpeechSystemStatus.Running)
+                    SpeechSystemStatus currentStatus = dictationRecognizer.Status;
+
+                    if (currentStatus != dictationRecognizerStatus)
                     {
-                        Results.instance.SetSubtitleContent(@"Say something ;)");
-                        Debug.Log($"MicrophoneManager - Update speech status : Now running");
-                    }
-                    else if (currentStatus == SpeechSystemStatus.Failed)
-                    {
-                        Results.instance.SetSubtitleContent(@"Something's wrong! (ง’̀-‘́)ง Fixing...");
-                        Debug.Log($"MicrophoneManager - Update speech status : Failed");
-                        ResetAudioCapture();
-                    }
-                    else if (currentStatus == SpeechSystemStatus.Stopped)
-                    {
-                        Debug.Log($"MicrophoneManager - Update speech status : Stopped");
-                        ResetAudioCapture();
+                        if (currentStatus == SpeechSystemStatus.Running)
+                        {
+                            Results.instance.SetSubtitleContent(@"Say something ;)");
+                            Debug.Log($"MicrophoneManager - Update speech status : Now running");
+                        }
+                        else if (currentStatus == SpeechSystemStatus.Failed)
+                        {
+                            Results.instance.SetSubtitleContent(@"Something's wrong! (ง’̀-‘́)ง Fixing...");
+                            Debug.Log($"MicrophoneManager - Update speech status : Failed");
+                            ResetAudioCapture();
+                        }
+                        else if (currentStatus == SpeechSystemStatus.Stopped)
+                        {
+                            Debug.Log($"MicrophoneManager - Update speech status : Stopped");
+                            ResetAudioCapture();
+                        }
+
+                        dictationRecognizerStatus = currentStatus;
                     }
 
-                    dictationRecognizerStatus = currentStatus;
+                    speechStatusUpdateTimer = speechStatusUpdateFrequency;
                 }
             }
 
-            speechStatusUpdateTimer = speechStatusUpdateFrequency;
-        }
-
-        // Only update this thread every updateFrequency duration
-        if (speechTextExpiryTimer <= 0.0f)
-        {
-            if (dictationRecognizer != null && dictationRecognizer.Status == SpeechSystemStatus.Running)
+            // Only update this thread every updateFrequency duration
+            if (speechTextExpiryTimer <= 0.0f)
             {
-                Results.instance.SetSubtitleContent("...");
-                Debug.Log($"MicrophoneManager - Update text expiry : Blanked out");
-            }
+                if (dictationRecognizer != null && dictationRecognizer.Status == SpeechSystemStatus.Running)
+                {
+                    Results.instance.SetSubtitleContent("...");
+                    Debug.Log($"MicrophoneManager - Update text expiry : Blanked out");
+                }
 
-            // Reset countdown timer to maintain the same frequency
-            speechTextExpiryTimer = speechTextExpiry;
+                // Reset countdown timer to maintain the same frequency
+                speechTextExpiryTimer = speechTextExpiry;
+            }
         }
     }
 
@@ -113,9 +119,13 @@ public class MicrophoneManager : MonoBehaviour {
     public void ResetAudioCapture()
     {
         Debug.Log($"MicrophoneManager - ResetAudioCapture");
-        StopCapturingAudio();
-        StartCapturingAudio();
-        speechTextExpiryTimer = speechTextExpirySinceReset;
+
+        lock (stateLock)
+        {
+            StopCapturingAudio();
+            StartCapturingAudio();
+            speechTextExpiryTimer = speechTextExpirySinceReset;
+        }
     }
 
     /// <summary> 
@@ -145,14 +155,17 @@ public class MicrophoneManager : MonoBehaviour {
     public void StopCapturingAudio()
     {
         Debug.Log($"MicrophoneManager - StopCapturingAudio");
-        if (dictationRecognizer != null)
+        lock (stateLock)
         {
-            Microphone.End(null);
-            dictationRecognizer.DictationResult -= DictationRecognizer_DictationResult;
-            dictationRecognizer.DictationComplete -= DictationRecognizer_DictationComplete;
-            dictationRecognizer.DictationError -= DictationRecognizer_DictationError;
-            dictationRecognizer.Dispose();
-            dictationRecognizer = null;
+            if (dictationRecognizer != null)
+            {
+                Microphone.End(null);
+                dictationRecognizer.DictationResult -= DictationRecognizer_DictationResult;
+                dictationRecognizer.DictationComplete -= DictationRecognizer_DictationComplete;
+                dictationRecognizer.DictationError -= DictationRecognizer_DictationError;
+                dictationRecognizer.Dispose();
+                dictationRecognizer = null;
+            }
         }
     }
 
@@ -164,12 +177,15 @@ public class MicrophoneManager : MonoBehaviour {
     {
         Debug.Log($"MicrophoneManager - DictationRecognizer_DictationResult");
 
-        // Update UI with dictation captured
-        Results.instance.SetSubtitleContent(text);
-        speechTextExpiryTimer = speechTextExpiry;
+        lock (stateLock)
+        {
+            // Update UI with dictation captured
+            Results.instance.SetSubtitleContent(text);
+            speechTextExpiryTimer = speechTextExpiry;
 
-        // Start the coroutine that process the dictation through Azure 
-        //StartCoroutine(Translator.instance.TranslateWithUnityNetworking(text));
+            // Start the coroutine that process the dictation through Azure 
+            //StartCoroutine(Translator.instance.TranslateWithUnityNetworking(text));
+        }
     }
 
     /// <summary>
@@ -181,7 +197,10 @@ public class MicrophoneManager : MonoBehaviour {
 
         if (completionCause != DictationCompletionCause.Complete)
         {
-            Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯");
+            lock (stateLock)
+            {
+                Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯");
+            }
         }
     }
 
@@ -192,6 +211,9 @@ public class MicrophoneManager : MonoBehaviour {
     {
         Debug.Log($"MicrophoneManager - DictationRecognizer_DictationError");
 
-        Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯" + error);
+        lock (stateLock)
+        {
+            Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯" + error);
+        }
     }
 }
