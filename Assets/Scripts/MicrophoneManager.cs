@@ -50,15 +50,13 @@ public class MicrophoneManager : MonoBehaviour {
             dictationRecognizer = new DictationRecognizer();
             dictationRecognizer.DictationResult += DictationRecognizer_DictationResult;
 
-            dictationRecognizer.DictationHypothesis += (text) =>
-            {
-                Debug.LogFormat("Dictation hypothesis: {0}", text);
-            };
-
             dictationRecognizer.DictationComplete += (completionCause) =>
             {
                 if (completionCause != DictationCompletionCause.Complete)
+                {
+                    Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯");
                     Debug.LogErrorFormat("Dictation completed unsuccessfully: {0}.", completionCause);
+                }
             };
 
             dictationRecognizer.DictationError += (error, hresult) =>
