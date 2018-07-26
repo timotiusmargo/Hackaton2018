@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -66,12 +65,9 @@ public class Translator : MonoBehaviour {
 
             long responseCode = unityWebRequest.responseCode;
 
-            // Update the UI with the response code 
-            Results.instance.SetAzureResponse(responseCode.ToString());
-
             if (unityWebRequest.isNetworkError || unityWebRequest.isHttpError)
             {
-                Results.instance.azureResponseText.text = unityWebRequest.error;
+                //Results.instance.azureResponseText.text = unityWebRequest.error;
                 yield return null;
             }
             else

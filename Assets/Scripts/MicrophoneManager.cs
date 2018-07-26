@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Windows.Speech;
 
 public class MicrophoneManager : MonoBehaviour {
@@ -28,13 +26,11 @@ public class MicrophoneManager : MonoBehaviour {
         //Use Unity Microphone class to detect devices and setup AudioSource 
         if (Microphone.devices.Length > 0)
         {
-            Results.instance.SetMicrophoneStatus("Initialising...");
             audioSource = GetComponent<AudioSource>();
             microphoneDetected = true;
         }
         else
         {
-            Results.instance.SetMicrophoneStatus("No Microphone detected");
             Results.instance.SetSubtitleContent("No microphone detected :(");
         }
     }
@@ -49,25 +45,11 @@ public class MicrophoneManager : MonoBehaviour {
             // Start dictation 
             dictationRecognizer = new DictationRecognizer();
             dictationRecognizer.DictationResult += DictationRecognizer_DictationResult;
-
-            dictationRecognizer.DictationComplete += (completionCause) =>
-            {
-                if (completionCause != DictationCompletionCause.Complete)
-                {
-                    Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯");
-                    Debug.LogErrorFormat("Dictation completed unsuccessfully: {0}.", completionCause);
-                }
-            };
-
-            dictationRecognizer.DictationError += (error, hresult) =>
-            {
-                Debug.LogErrorFormat("Dictation error: {0}; HResult = {1}.", error, hresult);
-            };
-
+            dictationRecognizer.DictationComplete += DictationRecognizer_DictationComplete;
+            dictationRecognizer.DictationError += DictationRecognizer_DictationError;
             dictationRecognizer.Start();
 
             // Update UI with mic status 
-            Results.instance.SetMicrophoneStatus("Capturing...");
             Results.instance.SetSubtitleContent("Now say something ;)");
         }
     }
@@ -77,9 +59,11 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary> 
     public void StopCapturingAudio()
     {
-        Results.instance.SetMicrophoneStatus("Mic sleeping");
+        Results.instance.SetSubtitleContent("Good bye for now!");
         Microphone.End(null);
         dictationRecognizer.DictationResult -= DictationRecognizer_DictationResult;
+        dictationRecognizer.DictationComplete -= DictationRecognizer_DictationComplete;
+        dictationRecognizer.DictationError -= DictationRecognizer_DictationError;
         dictationRecognizer.Dispose();
     }
 
@@ -90,11 +74,28 @@ public class MicrophoneManager : MonoBehaviour {
     private void DictationRecognizer_DictationResult(string text, ConfidenceLevel confidence)
     {
         // Update UI with dictation captured
-        Results.instance.SetDictationResult(text);
-
-        // Update UI with dictation captured
         Results.instance.SetSubtitleContent(text);
+
         // Start the coroutine that process the dictation through Azure 
         //StartCoroutine(Translator.instance.TranslateWithUnityNetworking(text));
+    }
+
+    /// <summary>
+    /// This handler is called every time the Dictation completes
+    /// </summary>
+    private void DictationRecognizer_DictationComplete(DictationCompletionCause completionCause)
+    {
+        if (completionCause != DictationCompletionCause.Complete)
+        {
+            Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯");
+        }
+    }
+
+    /// <summary>
+    /// This handler is called every time the Dictation gets an error
+    /// </summary>
+    private void DictationRecognizer_DictationError(string error, int hresult)
+    {
+        Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯" + error);
     }
 }
