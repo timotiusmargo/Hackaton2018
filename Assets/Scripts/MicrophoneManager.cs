@@ -15,6 +15,14 @@ public class MicrophoneManager : MonoBehaviour {
     // Component converting speech to text 
     private DictationRecognizer dictationRecognizer;
 
+    // dictationRecognizer instance status
+    private SpeechSystemStatus dictationRecognizerStatus = SpeechSystemStatus.Stopped;
+
+    private float frequencyCountdown;
+
+    // limit the update frequency to be every 3 seconds
+    private const float updateFrequency = 3.0f;
+
     private void Awake()
     {
         // Set this class to behave similar to singleton 
@@ -23,6 +31,9 @@ public class MicrophoneManager : MonoBehaviour {
 
     void Start()
     {
+        // Reset frequency countdown
+        frequencyCountdown = updateFrequency;
+
         //Use Unity Microphone class to detect devices and setup AudioSource 
         if (Microphone.devices.Length > 0)
         {
@@ -32,6 +43,42 @@ public class MicrophoneManager : MonoBehaviour {
         else
         {
             Results.instance.SetSubtitleContent("No microphone detected :(");
+        }
+    }
+
+    void Update()
+    {
+        frequencyCountdown -= Time.deltaTime;
+
+        // Only update this thread every updateFrequency duration
+        if (frequencyCountdown <= 0.0f)
+        {
+            if (dictationRecognizer != null)
+            {
+                SpeechSystemStatus currentStatus = dictationRecognizer.Status;
+
+                if (currentStatus != dictationRecognizerStatus)
+                {
+                    if (currentStatus == SpeechSystemStatus.Running)
+                    {
+                        Results.instance.SetSubtitleContent(@"Say something ;)");
+                    }
+                    else if (currentStatus == SpeechSystemStatus.Failed)
+                    {
+                        Results.instance.SetSubtitleContent(@"Something is wrong! :( Fixing it up...");
+                        StopCapturingAudio();
+                        StartCapturingAudio();
+                    }
+                    else if (currentStatus == SpeechSystemStatus.Stopped)
+                    {
+                        Results.instance.SetSubtitleContent(@"Working hard (ง’̀-‘́)ง ...");
+                        StopCapturingAudio();
+                        StartCapturingAudio();
+                    }
+
+                    dictationRecognizerStatus = currentStatus;
+                }
+            }
         }
     }
 
@@ -47,10 +94,11 @@ public class MicrophoneManager : MonoBehaviour {
             dictationRecognizer.DictationResult += DictationRecognizer_DictationResult;
             dictationRecognizer.DictationComplete += DictationRecognizer_DictationComplete;
             dictationRecognizer.DictationError += DictationRecognizer_DictationError;
+            dictationRecognizer.AutoSilenceTimeoutSeconds = 0;
+            dictationRecognizer.InitialSilenceTimeoutSeconds = 0;
             dictationRecognizer.Start();
 
-            // Update UI with mic status 
-            Results.instance.SetSubtitleContent("Now say something ;)");
+            dictationRecognizerStatus = dictationRecognizer.Status;
         }
     }
 
@@ -59,12 +107,13 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary> 
     public void StopCapturingAudio()
     {
-        Results.instance.SetSubtitleContent("Good bye for now!");
+        Results.instance.SetSubtitleContent("...");
         Microphone.End(null);
         dictationRecognizer.DictationResult -= DictationRecognizer_DictationResult;
         dictationRecognizer.DictationComplete -= DictationRecognizer_DictationComplete;
         dictationRecognizer.DictationError -= DictationRecognizer_DictationError;
         dictationRecognizer.Dispose();
+        dictationRecognizer = null;
     }
 
     /// <summary>
