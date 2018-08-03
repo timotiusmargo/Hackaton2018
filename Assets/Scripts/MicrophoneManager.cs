@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.Windows.Speech;
 
 public class MicrophoneManager : MonoBehaviour {
@@ -23,16 +24,19 @@ public class MicrophoneManager : MonoBehaviour {
     private float speechTextExpiryTimer;
 
     // Private lock to prevent race condition
-    private Object stateLock = new Object();
+    private System.Object stateLock = new System.Object();
 
     // limit the update frequency to be every 0.3 second
     private const float speechStatusUpdateFrequency = 0.3f;
 
-    // Clear rendered speech 8 seconds after it renders
-    private const float speechTextExpiry = 8.0f;
+    // Allow 1 second to lapsed to reset the speech engine
+    private const float speechEngineResetTurnover = 1f;
 
-    // Clear rendered speech 120 seconds after it reset
-    private const float speechTextExpirySinceReset = 120.0f;
+    // Clear rendered speech 10 seconds after it renders
+    private const float speechTextExpiry = 10.0f;
+
+    // Clear rendered speech 30 seconds after it reset
+    private const float speechTextExpirySinceReset = 30.0f;
 
     private void Awake()
     {
@@ -72,29 +76,24 @@ public class MicrophoneManager : MonoBehaviour {
                 {
                     SpeechSystemStatus currentStatus = dictationRecognizer.Status;
 
-                    if (currentStatus != dictationRecognizerStatus)
+                    if (currentStatus != SpeechSystemStatus.Running || currentStatus != dictationRecognizerStatus)
                     {
                         if (currentStatus == SpeechSystemStatus.Running)
                         {
                             Results.instance.SetSubtitleContent(@"Say something ;)");
-                            Debug.Log($"MicrophoneManager - Update speech status : Now running");
+                            Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - Update speech status : Now running");
+                            speechStatusUpdateTimer = speechStatusUpdateFrequency;
                         }
-                        else if (currentStatus == SpeechSystemStatus.Failed)
+                        else if (currentStatus == SpeechSystemStatus.Failed || currentStatus == SpeechSystemStatus.Stopped)
                         {
-                            Results.instance.SetSubtitleContent(@"Something's wrong! (ง’̀-‘́)ง Fixing...");
-                            Debug.Log($"MicrophoneManager - Update speech status : Failed");
+                            Results.instance.SetSubtitleContent(@"Resetting...");
+                            Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - Update speech status : " + currentStatus);
                             ResetAudioCapture();
-                        }
-                        else if (currentStatus == SpeechSystemStatus.Stopped)
-                        {
-                            Debug.Log($"MicrophoneManager - Update speech status : Stopped");
-                            ResetAudioCapture();
+                            speechStatusUpdateTimer = speechEngineResetTurnover;
                         }
 
                         dictationRecognizerStatus = currentStatus;
                     }
-
-                    speechStatusUpdateTimer = speechStatusUpdateFrequency;
                 }
             }
 
@@ -104,7 +103,7 @@ public class MicrophoneManager : MonoBehaviour {
                 if (dictationRecognizer != null && dictationRecognizer.Status == SpeechSystemStatus.Running)
                 {
                     Results.instance.SetSubtitleContent("...");
-                    Debug.Log($"MicrophoneManager - Update text expiry : Blanked out");
+                    Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - Update text expiry : Blanked out");
                 }
 
                 // Reset countdown timer to maintain the same frequency
@@ -118,7 +117,7 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary> 
     public void ResetAudioCapture()
     {
-        Debug.Log($"MicrophoneManager - ResetAudioCapture");
+        Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - ResetAudioCapture");
 
         lock (stateLock)
         {
@@ -133,19 +132,26 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary> 
     public void StartCapturingAudio()
     {
-        Debug.Log($"MicrophoneManager - StartCapturingAudio");
+        Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - StartCapturingAudio");
         if (microphoneDetected)
         {
-            // Start dictation 
-            dictationRecognizer = new DictationRecognizer();
-            dictationRecognizer.DictationResult += DictationRecognizer_DictationResult;
-            dictationRecognizer.DictationComplete += DictationRecognizer_DictationComplete;
-            dictationRecognizer.DictationError += DictationRecognizer_DictationError;
-            dictationRecognizer.AutoSilenceTimeoutSeconds = 0;
-            dictationRecognizer.InitialSilenceTimeoutSeconds = 0;
-            dictationRecognizer.Start();
+            try
+            {
+                // Start dictation 
+                dictationRecognizer = new DictationRecognizer();
+                dictationRecognizer.DictationResult += DictationRecognizer_DictationResult;
+                dictationRecognizer.DictationComplete += DictationRecognizer_DictationComplete;
+                dictationRecognizer.DictationError += DictationRecognizer_DictationError;
+                dictationRecognizer.AutoSilenceTimeoutSeconds = 0;
+                dictationRecognizer.InitialSilenceTimeoutSeconds = 0;
+                dictationRecognizer.Start();
 
-            dictationRecognizerStatus = dictationRecognizer.Status;
+                dictationRecognizerStatus = dictationRecognizer.Status;
+            }
+            catch (Exception e)
+            {
+                Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - StartCapturingAudio Exception!! : " + e.Message);
+            }
         }
     }
 
@@ -154,17 +160,24 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary> 
     public void StopCapturingAudio()
     {
-        Debug.Log($"MicrophoneManager - StopCapturingAudio");
+        Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - StopCapturingAudio");
         lock (stateLock)
         {
             if (dictationRecognizer != null)
             {
-                Microphone.End(null);
-                dictationRecognizer.DictationResult -= DictationRecognizer_DictationResult;
-                dictationRecognizer.DictationComplete -= DictationRecognizer_DictationComplete;
-                dictationRecognizer.DictationError -= DictationRecognizer_DictationError;
-                dictationRecognizer.Dispose();
-                dictationRecognizer = null;
+                try
+                {
+                    Microphone.End(null);
+                    dictationRecognizer.DictationResult -= DictationRecognizer_DictationResult;
+                    dictationRecognizer.DictationComplete -= DictationRecognizer_DictationComplete;
+                    dictationRecognizer.DictationError -= DictationRecognizer_DictationError;
+                    dictationRecognizer.Dispose();
+                    dictationRecognizer = null;
+                }
+                catch (Exception e)
+                {
+                    Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - StartCapturingAudio Exception!! : " + e.Message);
+                }
             }
         }
     }
@@ -175,7 +188,7 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary>
     private void DictationRecognizer_DictationResult(string text, ConfidenceLevel confidence)
     {
-        Debug.Log($"MicrophoneManager - DictationRecognizer_DictationResult");
+        Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - DictationRecognizer_DictationResult : " + text);
 
         lock (stateLock)
         {
@@ -193,13 +206,13 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary>
     private void DictationRecognizer_DictationComplete(DictationCompletionCause completionCause)
     {
-        Debug.Log($"MicrophoneManager - DictationRecognizer_DictationComplete");
+        Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - DictationRecognizer_DictationComplete : " + completionCause);
 
         if (completionCause != DictationCompletionCause.Complete)
         {
             lock (stateLock)
             {
-                Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯");
+                Results.instance.SetSubtitleContent(@"¯\_(ツ)_/¯ --- " + completionCause);
             }
         }
     }
@@ -209,7 +222,7 @@ public class MicrophoneManager : MonoBehaviour {
     /// </summary>
     private void DictationRecognizer_DictationError(string error, int hresult)
     {
-        Debug.Log($"MicrophoneManager - DictationRecognizer_DictationError");
+        Debug.Log("### " + Time.realtimeSinceStartup + " MicrophoneManager - DictationRecognizer_DictationError : " + error + " " + hresult);
 
         lock (stateLock)
         {
